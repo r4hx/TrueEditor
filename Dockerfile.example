@@ -1,0 +1,16 @@
+FROM debian:stable-slim
+WORKDIR /app/
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV WORDPRESS_SITE_URL=
+ENV WORDPRESS_LOGIN=
+ENV WORDPRESS_PASSWORD=
+ENV MACRUMOR_SITEMAP=https://www.macrumors.com/sitemap/sitemap-post-2021.xml
+ENV TELEGRAM_BOT_TOKEN=
+ADD . .
+RUN apt-get update
+RUN apt-get -y --no-install-recommends install python3-minimal python3-pip python3-setuptools python3-multidict python3-yarl
+RUN apt-get clean
+RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
+CMD [ "python3", "app.py" ]

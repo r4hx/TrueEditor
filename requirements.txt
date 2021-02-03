@@ -1,0 +1,4 @@
+aiohttp==3.7.3
+beautifulsoup4==4.9.3
+translators==4.7.13
+aiogram==2.11.2

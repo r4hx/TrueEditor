@@ -1,0 +1,10 @@
+# docker-compose.yml
+version: '3'
+
+services:
+  os:
+    build: .
+    container_name: 'TrueEditor'
+    command: ["python3", "app.py"]
+    volumes:
+      - .:/app
