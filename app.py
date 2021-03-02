@@ -252,7 +252,7 @@ class Telegram:
 
     async def refresh(self, message: types.Message):
         if len(m.post_urls) != 0:
-            self.url = m.post_urls.pop()
+            self.url = m.post_urls.popleft()
             self.context = await m.get_context_from_url(self.url)
             m.current_post_url.append(self.url)
             self.cover = m.get_cover(self.context)
