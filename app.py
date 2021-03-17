@@ -95,7 +95,6 @@ class MacRumors:
     def __init__(self, sitemap) -> None:
         self.sitemap = sitemap
         self.cache_file = "macrumors.txt"
-        self.post_urls = deque()
         self.current_post_url = deque()
         self.current_post_title = deque()
         self.current_post_description = deque()
@@ -113,12 +112,13 @@ class MacRumors:
         self.cached = [
             self.i.strip() for self.i in open(self.cache_file, "r").readlines()
         ]
+        self.post_url = []
         [
-            self.post_urls.append(self.i)
+            self.post_url.append(self.i)
             for self.i in self.source
             if self.i not in self.cached
         ]
-        return self.post_urls
+        return self.post_url[0]
 
     async def get_context_from_url(self, url):
         self.url = url
@@ -176,27 +176,7 @@ class Telegram:
             one_time_keyboard=False,
             selective=True,
         )
-        self.keyboard_markup.row("Добавить", "Пропустить", "Получить")
-        return self.keyboard_markup
-
-    def keyboard_select_article_action(self):
-        self.keyboard_markup = types.ReplyKeyboardMarkup(
-            resize_keyboard=True,
-            row_width=4,
-            one_time_keyboard=False,
-            selective=True,
-        )
-        self.keyboard_markup.row("Добавить", "Пропустить")
-        return self.keyboard_markup
-
-    def keyboard_request_new_article(self):
-        self.keyboard_markup = types.ReplyKeyboardMarkup(
-            resize_keyboard=True,
-            row_width=4,
-            one_time_keyboard=False,
-            selective=True,
-        )
-        self.keyboard_markup.row("Получить")
+        self.keyboard_markup.row("Добавить", "Получить")
         return self.keyboard_markup
 
     async def add(self, message: types.Message):
@@ -228,53 +208,31 @@ class Telegram:
         await self.bot.send_message(
             message.chat.id,
             text="Статья добавлена.",
-            reply_markup=self.keyboard_request_new_article(),
+            reply_markup=self.keyboard_full_menu(),
         )
         await self.bot.send_message(
             message.chat.id,
             text=f"{w.site_url}/wp-admin/post.php?post={self.post['id']}&action=edit",
-            reply_markup=self.keyboard_request_new_article(),
-        )
-
-    async def skip(self, message: types.Message):
-        self.post = m.current_post_url.pop()
-        m.current_post_cover.clear()
-        m.current_post_description.clear()
-        m.current_post_text.clear()
-        m.current_post_title.clear()
-        with open(m.cache_file, "+a") as self.f:
-            self.f.write(f"{self.post}\n")
-        await self.bot.send_message(
-            message.chat.id,
-            text="Статья обработана",
-            reply_markup=self.keyboard_request_new_article(),
+            reply_markup=self.keyboard_full_menu(),
         )
 
     async def refresh(self, message: types.Message):
-        if len(m.post_urls) != 0:
-            self.url = m.post_urls.popleft()
-            self.context = await m.get_context_from_url(self.url)
-            m.current_post_url.append(self.url)
-            self.cover = m.get_cover(self.context)
-            m.current_post_cover.append(self.cover)
-            self.title = m.get_title(self.context)
-            m.current_post_title.append(self.title)
-            self.description = m.get_description(self.context)
-            m.current_post_description.append(self.description)
-            self.text = m.get_text(self.context)
-            m.current_post_text.append(self.text)
-            await self.bot.send_message(
-                message.chat.id,
-                text=f"{self.url}",
-                reply_markup=self.keyboard_select_article_action(),
-            )
-        else:
-            await self.loop.create_task(m.new_post_get_from_sitemap())
-            await self.bot.send_message(
-                message.chat.id,
-                text="Нет новых статей. Попробуй обновить позже.",
-                reply_markup=self.keyboard_request_new_article(),
-            )
+        self.url = await self.loop.create_task(m.new_post_get_from_sitemap())
+        self.context = await m.get_context_from_url(self.url)
+        m.current_post_url.append(self.url)
+        self.cover = m.get_cover(self.context)
+        m.current_post_cover.append(self.cover)
+        self.title = m.get_title(self.context)
+        m.current_post_title.append(self.title)
+        self.description = m.get_description(self.context)
+        m.current_post_description.append(self.description)
+        self.text = m.get_text(self.context)
+        m.current_post_text.append(self.text)
+        await self.bot.send_message(
+            message.chat.id,
+            text=f"{self.url}",
+            reply_markup=self.keyboard_full_menu(),
+        )
 
 
 if __name__ == "__main__":
@@ -287,6 +245,5 @@ if __name__ == "__main__":
     m = MacRumors(sitemap=os.getenv("MACRUMOR_SITEMAP"))
     tg = Telegram(token=os.getenv("TELEGRAM_BOT_TOKEN"))
     tg.dp.register_message_handler(tg.add, text=["Добавить"])
-    tg.dp.register_message_handler(tg.skip, text=["Пропустить"])
     tg.dp.register_message_handler(tg.refresh, text=["Получить"])
     executor.start_polling(tg.dp, skip_updates=True)
