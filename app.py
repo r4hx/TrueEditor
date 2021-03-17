@@ -217,6 +217,9 @@ class Telegram:
         )
 
     async def refresh(self, message: types.Message):
+        self.post_url = m.current_post_url.pop()
+        with open(m.cache_file, "+a") as f:
+            f.write(f"{self.post_url}\n")
         self.url = await self.loop.create_task(m.new_post_get_from_sitemap())
         self.context = await m.get_context_from_url(self.url)
         m.current_post_url.append(self.url)
